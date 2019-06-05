@@ -6,6 +6,7 @@ import Control.Category
 import Control.Arrow
 import Control.Monad.IO.Class
 import Control.Concurrent.Async
+import Data.Either
 
 data Flow :: * -> * -> * where
     --ProxyTask :: Flow a b -> Flow a b
@@ -29,6 +30,12 @@ instance Category Flow where
 instance Arrow Flow where
     arr f = Wrap f Prelude.id Control.Category.id
     (***) = Join
+
+instance ArrowChoice Flow where
+    (+++) t1 t2 = Branch (arr isLeft) (Wrap (fromLeft undefined) Left t1) (Wrap (fromRight undefined) Right t2)
+
+instance ArrowApply Flow where
+    app = _appFlow
 
 -- * execution
 
