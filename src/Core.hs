@@ -24,7 +24,7 @@ data TaskResponse a b where
     ProxyTo :: Flow a b -> TaskResponse a b
 
 instance Category Flow where
-    id = Pass --Task (pure Prelude.. Direct)
+    id = Pass
     (.) = flip Pipe
 
 instance Arrow Flow where
@@ -35,7 +35,7 @@ instance ArrowChoice Flow where
     (+++) t1 t2 = Branch (arr isLeft) (Wrap (fromLeft undefined) Left t1) (Wrap (fromRight undefined) Right t2)
 
 instance ArrowApply Flow where
-    app = _appFlow
+    app = Task $ \(f, x) -> Direct <$> execTask f x
 
 -- * execution
 
