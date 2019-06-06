@@ -7,6 +7,8 @@ import Control.Arrow
 import Control.Monad.IO.Class
 import Control.Concurrent.Async
 import Data.Either
+import Data.Map (Map)
+import qualified Data.Map as M
 
 data Flow :: * -> * -> * where
     --ProxyTask :: Flow a b -> Flow a b
@@ -35,36 +37,42 @@ instance ArrowChoice Flow where
     (+++) t1 t2 = Branch (arr isLeft) (Wrap (fromLeft undefined) Left t1) (Wrap (fromRight undefined) Right t2)
 
 instance ArrowApply Flow where
-    app = Task $ \(f, x) -> Direct <$> execTask f x
+    app = Task $ \(f, x) -> Direct <$> execFlow f x
 
 -- * execution
 
-execTask :: Flow a b -> a -> IO b
-execTask tsk x = case tsk of
+execFlow :: Flow a b -> a -> IO b
+execFlow tsk x = case tsk of
     Pass -> pure x
     Task f -> do
         res <- f x
         case res of
             Direct r -> pure r
-            ProxyTo t -> execTask t x
-    Wrap f g t -> g <$> execTask t (f x)
-    Pipe t1 t2 -> execTask (t1 >>> t2) x
+            ProxyTo t -> execFlow t x
+    Wrap f g t -> g <$> execFlow t (f x)
+    Pipe t1 t2 -> execFlow (t1 >>> t2) x
     Branch tp ta tb -> do
-        p <- execTask tp x
-        execTask (if p then ta else tb) x
-    Race ta tb -> race (execTask ta (fst x)) (execTask tb (snd x))
-    Join ta tb -> concurrently (execTask ta (fst x)) (execTask tb (snd x))
+        p <- execFlow tp x
+        execFlow (if p then ta else tb) x
+    Race ta tb -> race (execFlow ta (fst x)) (execFlow tb (snd x))
+    Join ta tb -> concurrently (execFlow ta (fst x)) (execFlow tb (snd x))
 
 -- * inspect progress
 
+-- | a variable signal
 data VarSignal a
-data Progress = Pend | Wait | WIP | Prox | Done
+type VS = VarSignal
 
-runFlow :: Flow a b -> a -> IO (VarSignal Progress, IO b)
-runFlow = undefined
-
-glimpse :: VarSignal a -> IO a
+glimpse :: VS a -> IO a
 glimpse = undefined
+
+-- | Working Progress of "Flow a b"
+data Progress a b = Pend | WIP | Prox (Flow a b) (Map Name (VS (Progress a b))) | Done
+
+type Name = String
+
+runFlow :: Flow a b -> a -> IO (Map Name (VS (Progress a b)), IO b)
+runFlow = undefined
 
 main :: IO ()
 main = undefined
