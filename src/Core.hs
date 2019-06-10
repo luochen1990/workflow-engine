@@ -37,7 +37,7 @@ instance ArrowChoice Flow where
     (+++) t1 t2 = Branch (arr isLeft) (Wrap (fromLeft undefined) Left t1) (Wrap (fromRight undefined) Right t2)
 
 instance ArrowApply Flow where
-    app = Task $ \(f, x) -> Direct <$> execFlow f x
+    app = Task $ \(f, x) -> pure $ ProxyTo (Wrap snd Prelude.id f)
 
 -- * execution
 
